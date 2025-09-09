@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Attendance Notifications</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#141a2f;
+      --muted:#8b93a7;
+      --text:#e7ecf5;
+      --accent:#5b8cff;
+      --accent-strong:#3b6df5;
+      --warn:#ffb347;
+      --alert:#ff5b6e;
+      --ok:#31c48d;
+      --radius:16px;
+    }
+    body{
+      margin:0;
+      font-family:system-ui, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:20px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);
+      padding:20px;
+      box-shadow:0 8px 30px rgba(0,0,0,.35);
+      max-width:800px;
+      margin:auto;
+    }
+    h1{margin:0 0 12px}
+    .nav{margin-bottom:18px; display:flex; gap:12px}
+    .btn{
+      padding:8px 14px;
+      border:0;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      background:linear-gradient(180deg,var(--accent),var(--accent-strong));
+      color:#fff;
+      text-decoration:none;
+    }
+    ul{list-style:none; padding:0; margin:0}
+    li{
+      padding:14px;
+      border-radius:12px;
+      margin-bottom:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .info{background:rgba(255,255,255,.05)}
+    .warn{background:rgba(255,179,71,.15); color:var(--warn)}
+    .alert{background:rgba(255,91,110,.15); color:var(--alert)}
+    .ok{background:rgba(49,196,141,.15); color:var(--ok)}
+    footer{margin-top:18px; color:var(--muted); font-size:.85rem; text-align:center}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="nav">
+      <a href="attendance.html" class="btn">➕ Mark Attendance</a>
+      <a href="reports.html" class="btn">📊 Reports</a>
+      <a href="notifications.html" class="btn">🔔 Notifications</a>
+    </div>
+
+    <h1>Notifications</h1>
+    <p>Automatic updates based on attendance records.</p>
+
+    <ul id="notificationsList"></ul>
+
+    <footer>
+      Notifications are generated locally. Connect backend for real alerts.
+    </footer>
+  </main>
+
+  <script>
+    const students = [
+      "Alice Johnson",
+      "Brian Lee",
+      "Catherine Davis",
+      "David Kumar",
+      "Emma Smith"
+    ];
+
+    // Collect attendance data
+    function collectData(){
+      const data = {};
+      for(const s of students){
+        data[s] = {present:0, absent:0, total:0};
+      }
+      for(let i=0;i<localStorage.length;i++){
+        const key = localStorage.key(i);
+        if(key.startsWith("attendance_")){
+          const records = JSON.parse(localStorage.getItem(key) || "{}");
+          students.forEach(s=>{
+            if(records[s]==="Present"){
+              data[s].present++;
+              data[s].total++;
+            } else if(records[s]==="Absent"){
+              data[s].absent++;
+              data[s].total++;
+            }
+          });
+        }
+      }
+      return data;
+    }
+
+    function render(){
+      const data = collectData();
+      const list=document.getElementById("notificationsList");
+      list.innerHTML="";
+
+      // Daily summary
+      const todayKey = "attendance_" + new Date().toISOString().slice(0,10);
+      if(localStorage.getItem(todayKey)){
+        const rec = JSON.parse(localStorage.getItem(todayKey));
+        const marked = Object.values(rec).filter(v=>v==="Present"||v==="Absent").length;
+        const li=document.createElement("li");
+        li.className="info";
+        li.textContent=✅ ${marked} students marked today (${todayKey.slice(11)});
+        list.appendChild(li);
+      }
+
+      // Student-specific alerts
+      students.forEach(s=>{
+        const r = data[s];
+        if(r.total>=3){ // Only after some records
+          const pct = (r.present/r.total)*100;
+          const li=document.createElement("li");
+          if(pct<50){
+            li.className="alert";
+            li.textContent=⚠ Alert: ${s} has very low attendance (${pct.toFixed(1)}%);
+          } else if(pct<75){
+            li.className="warn";
+            li.textContent=⚠ Warning: ${s} attendance is below 75% (${pct.toFixed(1)}%);
+          } else {
+            li.className="ok";
+            li.textContent=👍 ${s} attendance is healthy (${pct.toFixed(1)}%);
+          }
+          list.appendChild(li);
+        }
+      });
+
+      if(!list.hasChildNodes()){
+        const li=document.createElement("li");
+        li.className="info";
+        li.textContent="ℹ No notifications yet. Mark some attendance first.";
+        list.appendChild(li);
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

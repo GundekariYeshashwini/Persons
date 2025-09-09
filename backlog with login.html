@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Attendance Tracker • Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #0f172a;           /* slate-900 */
+      --card: #111827;         /* gray-900 */
+      --muted: #94a3b8;        /* slate-400 */
+      --text: #e5e7eb;         /* gray-200 */
+      --accent: #6366f1;       /* indigo-500 */
+      --accent-2: #22d3ee;     /* cyan-400 */
+      --danger: #ef4444;       /* red-500 */
+      --ok: #10b981;           /* emerald-500 */
+      --ring: rgba(99,102,241,.45);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 10% 10%, rgba(34,211,238,.06), transparent 50%),
+                  radial-gradient(1200px 800px at 90% 90%, rgba(99,102,241,.08), transparent 50%),
+                  var(--bg);
+      color:var(--text);
+      display:grid; place-items:center;
+      padding:24px;
+    }
+    .card{
+      width:100%; max-width: 440px; background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(148,163,184,.15);
+      border-radius:24px; padding:28px; position:relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter: blur(8px);
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px; margin-bottom:12px;
+    }
+    .logo{
+      width:42px; height:42px; border-radius:12px; display:grid; place-items:center; font-weight:700;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color:white; box-shadow: 0 10px 20px rgba(34,211,238,.25);
+    }
+    h1{font-size:1.35rem; margin:0}
+    p.sub{margin:.25rem 0 1.25rem; color:var(--muted); font-size:.95rem}
+
+    form{display:grid; gap:14px}
+    label{font-size:.9rem; color:#cbd5e1;}
+    .field{display:grid; gap:6px}
+
+    .input, select{
+      width:100%; padding:12px 14px; border-radius:14px; border:1px solid rgba(148,163,184,.25);
+      background:#0b1220; color:var(--text); outline:none; transition:.2s ease;
+    }
+    .input:focus, select:focus{ box-shadow:0 0 0 4px var(--ring); border-color:transparent }
+
+    .row{display:flex; gap:10px}
+
+    .pw-wrap{ position:relative }
+    .toggle{ position:absolute; right:10px; top:50%; transform: translateY(-50%); border:none; background:transparent; color:var(--muted); cursor:pointer; padding:6px; border-radius:8px }
+    .toggle:focus{ outline: none; box-shadow:0 0 0 3px var(--ring) }
+
+    .actions{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px }
+    .link{ color:#a5b4fc; text-decoration:none; font-size:.9rem }
+    .link:hover{ text-decoration:underline }
+
+    .btn{
+      width:100%; padding:12px 14px; border-radius:14px; border:none; color:white; cursor:pointer; font-weight:600; font-size:1rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 20px rgba(99,102,241,.25);
+    }
+    .btn:active{ transform: translateY(1px) }
+
+    .notice{ font-size:.9rem; color:var(--muted); text-align:center; margin-top:14px }
+    .error{ color:var(--danger); font-size:.9rem; margin-top:6px }
+    .success{ color:var(--ok); font-size:.95rem; margin-top:6px; text-align:center }
+
+    .footer{ margin-top:18px; text-align:center; font-size:.85rem; color:var(--muted) }
+
+    .remember{ display:flex; align-items:center; gap:8px; color:#cbd5e1; font-size:.9rem }
+
+    @media (max-width:480px){
+      .card{ padding:22px }
+    }
+  </style>
+</head>
+<body>
+  <main class="card" aria-labelledby="title">
+    <div class="brand" role="img" aria-label="Student Attendance Tracker logo">
+      <div class="logo" aria-hidden="true">AT</div>
+      <div>
+        <h1 id="title">Student Attendance Tracker</h1>
+        <p class="sub">Sign in to continue</p>
+      </div>
+    </div>
+
+    <!-- Demo credentials (for front-end testing only) -->
+    <!--
+      Students:    student@example.com / 123456
+      Teachers:    teacher@example.com / 123456
+      Admin:       admin@example.com   / 123456
+    -->
+
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label for="role">Role</label>
+        <select id="role" name="role" required aria-required="true">
+          <option value="" disabled selected>Select role</option>
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="email">Email / ID</label>
+        <input class="input" id="email" name="email" type="email" placeholder="you@example.com" autocomplete="username" required aria-required="true" />
+      </div>
+
+      <div class="field pw-wrap">
+        <label for="password">Password</label>
+        <input class="input" id="password" name="password" type="password" placeholder="••••••" autocomplete="current-password" minlength="6" required aria-required="true" />
+        <button class="toggle" type="button" id="togglePw" aria-label="Show or hide password">👁</button>
+      </div>
+
+      <div class="actions">
+        <label class="remember">
+          <input type="checkbox" id="remember" /> Remember me
+        </label>
+        <a class="link" href="#" id="forgot">Forgot password?</a>
+      </div>
+
+      <button class="btn" type="submit">Sign in</button>
+      <div id="msg" aria-live="polite" class="error" hidden></div>
+      <div id="ok" aria-live="polite" class="success" hidden></div>
+    </form>
+
+    <p class="notice">Demo only — hook this form to your backend (Node, Django, PHP, etc.) for real authentication.</p>
+    <div class="footer">© <span id="year"></span> Attendance Tracker</div>
+  </main>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const msg  = document.getElementById('msg');
+    const ok   = document.getElementById('ok');
+    const role = document.getElementById('role');
+    const email= document.getElementById('email');
+    const pass = document.getElementById('password');
+    const remember = document.getElementById('remember');
+    const toggle = document.getElementById('togglePw');
+
+    // Demo in-memory users (DO NOT USE in production)
+    const USERS = {
+      student: { 'student@example.com': '123456' },
+      teacher: { 'teacher@example.com': '123456' },
+      admin:   { 'admin@example.com':   '123456' },
+    };
+
+    // Restore remembered email/role
+    (function init(){
+      const saved = JSON.parse(localStorage.getItem('attend_login') || '{}');
+      if(saved.role) role.value = saved.role;
+      if(saved.email) email.value = saved.email;
+      document.getElementById('year').textContent = new Date().getFullYear();
+    })();
+
+    toggle.addEventListener('click', () => {
+      const type = pass.getAttribute('type') === 'password' ? 'text' : 'password';
+      pass.setAttribute('type', type);
+      toggle.textContent = type === 'password' ? '👁' : '🙈';
+    });
+
+    document.getElementById('forgot').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('Forgot password is not wired up in this demo. Connect to your backend to send reset links.');
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      msg.hidden = true; ok.hidden = true; msg.textContent = ''; ok.textContent = '';
+
+      // Front-end validation
+      if(!role.value){ return showError('Please select your role.'); }
+      if(!email.value){ return showError('Email/ID is required.'); }
+      if(!pass.value || pass.value.length < 6){ return showError('Password must be at least 6 characters.'); }
+
+      // Fake auth for demo
+      const table = USERS[role.value] || {};
+      const expected = table[email.value.trim().toLowerCase()];
+      if(!expected || expected !== pass.value){
+        return showError('Invalid credentials. Try the demo users listed in the comment.');
+      }
+
+      // Remember me
+      if(remember.checked){
+        localStorage.setItem('attend_login', JSON.stringify({ role: role.value, email: email.value }));
+      } else {
+        localStorage.removeItem('attend_login');
+      }
+
+      ok.textContent = 'Login successful! Redirecting to dashboard...';
+      ok.hidden = false;
+
+      // Simulated redirect to dashboard — replace with your actual page
+      setTimeout(() => {
+        // In a real app, you'd navigate to the appropriate dashboard route
+        // e.g., window.location.href = /dashboard/${role.value}.html;
+        alert(Welcome ${role.value}! (Demo redirect)\nYou would now go to: dashboard/${role.value}.html);
+      }, 600);
+    });
+
+    function showError(text){ msg.textContent = text; msg.hidden = false; }

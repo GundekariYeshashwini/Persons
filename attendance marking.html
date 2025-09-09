@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Attendance Marking • Attendance Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0b1220;--card:#0f1724;--muted:#94a3b8;--text:#e6eef8;--accent:#6366f1}
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto; background:linear-gradient(180deg,#071026 0%,#0b1220 100%); color:var(--text); padding:24px}
+    .wrap{max-width:1000px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:1.25rem;margin:0}
+    .controls{display:flex;gap:10px;align-items:center}
+    input,select,button{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:#071428;color:var(--text)}
+    button{cursor:pointer}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,.03)}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    @media (max-width:880px){.grid{grid-template-columns:1fr}}
+
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .students-table{width:100%;border-collapse:collapse}
+    .students-table th,.students-table td{padding:8px 10px;text-align:left;border-bottom:1px dashed rgba(255,255,255,.03)}
+    .students-table th{font-weight:600;color:var(--muted)}
+    .student-name{font-weight:600}
+    .present{color:#10b981}
+    .absent{color:#ef4444}
+
+    .side{position:relative}
+    .side h3{margin:0 0 8px}
+    .small{font-size:.9rem;color:var(--muted)}
+    .actions{display:flex;gap:8px;margin-top:10px}
+    .search{width:200px}
+    .list{max-height:420px;overflow:auto;margin-top:8px}
+    .row{display:flex;align-items:center;gap:8px}
+    .add-row{display:flex;gap:8px;margin-top:10px}
+    .note{font-size:.85rem;color:var(--muted);margin-top:8px}
+    .export{background:linear-gradient(90deg,var(--accent),#22d3ee);color:white;border:none}
+    .bulk{background:#111827;color:var(--text);border:1px solid rgba(255,255,255,.03)}
+    .toggle-all{display:flex;gap:6px;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Attendance Marking</h1>
+      <div class="controls">
+        <label class="small">Date</label>
+        <input type="date" id="date" />
+        <button id="loadToday">Today</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="toolbar">
+          <div class="toggle-all">
+            <label class="small">Mark all:</label>
+            <button class="bulk" id="markAllPresent">Present</button>
+            <button class="bulk" id="markAllAbsent">Absent</button>
+          </div>
+          <input class="search" id="search" placeholder="Search students..." />
+          <button id="refresh">Refresh</button>
+          <button id="exportCSV" class="export">Export CSV</button>
+        </div>
+
+        <table class="students-table" aria-live="polite">
+          <thead>
+            <tr>
+              <th style="width:48px">#</th>
+              <th>Name / ID</th>
+              <th style="width:120px">Status</th>
+              <th style="width:120px">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+
+        <p class="note">Tip: Add students on the right panel. Data is saved to your browser (localStorage) per date.</p>
+      </section>
+
+      <aside class="side card">
+        <h3>Student Roster</h3>
+        <div class="small">Add / remove students for quick marking</div>
+
+        <div class="list" id="rosterList" aria-live="polite"></div>
+
+        <div class="add-row">
+          <input id="newName" placeholder="Full name" />
+          <input id="newId" placeholder="ID (optional)" style="width:110px" />
+        </div>
+        <div class="actions">
+          <button id="addStudent">Add</button>
+          <button id="clearRoster" class="bulk">Clear roster</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="small">Saved snapshots</div>
+          <select id="snapshots" style="width:100%;margin-top:6px"></select>
+          <div class="actions">
+            <button id="saveSnapshot">Save Roster</button>
+            <button id="loadSnapshot" class="bulk">Load</button>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // Simple attendance marking front-end using localStorage
+    const dateInput = document.getElementById('date');
+    const tbody = document.getElementById('tbody');
+    const rosterList = document.getElementById('rosterList');
+    const search = document.getElementById('search');
+    const exportCSV = document.getElementById('exportCSV');
+    const markAllPresent = document.getElementById('markAllPresent');
+    const markAllAbsent = document.getElementById('markAllAbsent');
+    const loadToday = document.getElementById('loadToday');
+    const addStudent = document.getElementById('addStudent');
+    const newName = document.getElementById('newName');
+    const newId = document.getElementById('newId');
+    const clearRoster = document.getElementById('clearRoster');
+    const snapshots = document.getElementById('snapshots');
+    const saveSnapshot = document.getElementById('saveSnapshot');
+    const loadSnapshot = document.getElementById('loadSnapshot');
+    const refresh = document.getElementById('refresh');
+
+    // Keys in localStorage
+    const ROSTER_KEY = 'attendance_roster_v1';
+    const SNAP_KEY = 'attendance_roster_snapshots_v1';
+    const ATT_KEY_BASE = 'attendance_records_v1:'; // + date
+
+    // In-memory state
+    let roster = [];
+    let records = {}; // id -> {status, note}
+
+    // Helpers
+    function todayISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
+    function loadRoster(){ roster = JSON.parse(localStorage.getItem(ROSTER_KEY) || '[]'); renderRoster(); }
+    function saveRoster(){ localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); renderRoster(); }
+    function rosterSnapshotNames(){ return JSON.parse(localStorage.getItem(SNAP_KEY) || '[]'); }
+    function saveSnapshotList(list){ localStorage.setItem(SNAP_KEY, JSON.stringify(list)); }
+
+    function recordsKey(d){ return ATT_KEY_BASE + d; }
+    function loadRecords(date){ records = JSON.parse(localStorage.getItem(recordsKey(date)) || '{}'); }
+    function saveRecords(date){ localStorage.setItem(recordsKey(date), JSON.stringify(records)); }
+
+    // Render roster panel
+    function renderRoster(){
+      rosterList.innerHTML = '';
+      roster.forEach((s, idx) => {
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.style.justifyContent = 'space-between';
+        div.style.padding = '6px 0';
+        div.innerHTML = <div>${idx+1}. <strong>${escapeHtml(s.name)}</strong> <span style="color:var(--muted)"> ${s.id?— ${escapeHtml(s.id)}:''}</span></div>;
+        const remove = document.createElement('button'); remove.textContent = 'Remove'; remove.className='bulk';
+        remove.addEventListener('click', ()=>{ roster.splice(idx,1); saveRoster(); loadTodayClick(); });
+        div.appendChild(remove);
+        rosterList.appendChild(div);
+      });
+      renderSnapshotsSelect();
+    }
+
+    function renderSnapshotsSelect(){
+      const list = rosterSnapshotNames();
+      snapshots.innerHTML = '';
+      const empty = document.createElement('option'); empty.value=''; empty.textContent='Select snapshot'; snapshots.appendChild(empty);
+      list.forEach((s)=>{ const o = document.createElement('option'); o.value = s.name; o.textContent = ${s.name} — ${s.count} students; snapshots.appendChild(o); });
+    }
+
+    function renderTable(){
+      tbody.innerHTML = '';
+      const q = search.value.trim().toLowerCase();
+      roster.forEach((s, idx)=>{
+        const key = (s.id || s.name).toLowerCase();
+        if(q && !(s.name.toLowerCase().includes(q) || (s.id||'').toLowerCase().includes(q))) return;
+        const tr = document.createElement('tr');
+        const num = document.createElement('td'); num.textContent = idx+1;
+        const name = document.createElement('td'); name.innerHTML = <div class="student-name">${escapeHtml(s.name)}</div><div class="small">${escapeHtml(s.id||'')}</div>;
+        const status = document.createElement('td');
+        const select = document.createElement('select');
+        ['present','absent','late','excused'].forEach(o=>{ const opt = document.createElement('option'); opt.value=o; opt.textContent=o[0].toUpperCase()+o.slice(1); select.appendChild(opt); });
+        const rec = records[key] || {status:'absent', note: ''};
+        select.value = rec.status;
+        select.addEventListener('change', ()=>{ records[key] = records[key]||{}; records[key].status = select.value; saveRecords(dateInput.value); renderTable(); });
+        status.appendChild(select);
+
+        const noteTd = document.createElement('td');
+        const noteIn = document.createElement('input'); noteIn.value = rec.note || '';
+        noteIn.addEventListener('input', ()=>{ records[key] = records[key]||{}; records[key].note = noteIn.value; saveRecords(dateInput.value); });
+        noteTd.appendChild(noteIn);
+
+        tr.appendChild(num); tr.appendChild(name); tr.appendChild(status); tr.appendChild(noteTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Utility
+    function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // Events
+    dateInput.addEventListener('change', ()=>{ loadTodayClick(); });
+    search.addEventListener('input', ()=>{ renderTable(); });
+    refresh.addEventListener('click', ()=>{ loadRoster(); loadTodayClick(); });
+
+    markAllPresent.addEventListener('click', ()=>{
+      roster.forEach(s=>{ const key=(s.id||s.name).toLowerCase(); records[key] = records[key]||{}; records[key].status='present'; });
+      saveRecords(dateInput.value); renderTable();
+    });
+    markAllAbsent.addEventListener('click', ()=>{
+      roster.forEach(s=>{ const key=(s.id||s.name).toLowerCase(); records[key] = records[key]||{}; records[key].status='absent'; });
+      saveRecords(dateInput.value); renderTable();
+    });
+
+    loadToday.addEventListener('click', ()=>{ dateInput.value = todayISO(); loadTodayClick(); });
+
+    addStudent.addEventListener('click', ()=>{
+      const name = newName.value.trim(); const id = newId.value.trim();
+      if(!name) return alert('Please enter a student name');
+      roster.push({name, id}); newName.value=''; newId.value=''; saveRoster(); renderTable();
+    });
+
+    clearRoster.addEventListener('click', ()=>{
+      if(!confirm('Clear entire roster?')) return; roster = []; saveRoster(); renderTable(); loadTodayClick();
+    });
+
+    saveSnapshot.addEventListener('click', ()=>{
+      const name = prompt('Snapshot name (e.g. ClassA Sep 2025)'); if(!name) return;
+      const list = rosterSnapshotNames(); list.push({name, count: roster.length, data: roster}); saveSnapshotList(list); renderSnapshotsSelect(); alert('Saved snapshot.');
+    });
+    loadSnapshot.addEventListener('click', ()=>{
+      const val = snapshots.value; if(!val) return alert('Choose a snapshot');
+      const list = rosterSnapshotNames(); const s = list.find(x=>x.name===val); if(!s) return alert('Snapshot not found'); roster = s.data || []; saveRoster(); loadTodayClick();
+    });
+
+    exportCSV.addEventListener('click', ()=>{
+      const date = dateInput.value; if(!date) return alert('Pick a date first');
+      const rows = [['S.No','Name','ID','Status','Note']];
+      roster.forEach((s,idx)=>{ const key=(s.id||s.name).toLowerCase(); const r = records[key] || {status:'absent',note:''}; rows.push([idx+1, s.name, s.id||'', r.status, r.note || '']); });
+      const csv = rows.map(r=>r.map(cell=>"${String(cell).replace(/"/g,'""')}").join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = attendance_${date}.csv; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // Load data for the chosen date
+    function loadTodayClick(){
+      const date = dateInput.value || todayISO(); dateInput.value = date; loadRecords(date); renderTable();
+    }
+
+    // Initialize
+    (function init(){
+      // Set date to today by default
+      dateInput.value = todayISO();
+      // Load roster (or create sample)
+      if(!localStorage.getItem(ROSTER_KEY)){
+        roster = [
+          {name:'Alice Johnson', id:'S001'},
+          {name:'Bob Kumar', id:'S002'},
+          {name:'Chitra Rao', id:'S003'},
+          {name:'Dinesh Patel', id:'S004'}
+        ];
+        saveRoster();
+      }
+      loadRoster();
+      loadTodayClick();
+    })();
+  </script>
+</body>
+</html>
